@@ -1,6 +1,6 @@
 
 import React, { Component } from 'react'
-import { Text, View, KeyboardAvoidingView, TextInput, SafeAreaView, ScrollView, TouchableOpacity, Modal, Button, WebView, ActivityIndicator } from 'react-native';
+import { Text, View, KeyboardAvoidingView, TextInput, SafeAreaView, ScrollView, TouchableOpacity, Modal, Button, WebView, ActivityIndicator, DatePickerAndroid } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { DirectLine, ConnectionStatus } from "botframework-directlinejs";
 import Voice from 'react-native-voice';
@@ -56,7 +56,7 @@ export default class App extends Component {
             //   botMessage.attachments = null;
             // }
             newMessage = this.botMessageToWebMessage(botMessage);
-            this.setState({  quickReplies });
+            this.setState({ quickReplies });
           }
         }
         if (botMessage.suggestedActions) {
@@ -70,8 +70,16 @@ export default class App extends Component {
           this.setState({ quickReplies })
         }
         else {
-          newMessage = this.botMessageToWebMessage(botMessage);
-          this.setState({ messages: [newMessage, ...this.state.messages], quickReplies });
+          if (botMessage.text == "Ok! thanks. you usually get it by mail, which can take up to 6 days. when are you going for vacation?") {
+            quickReplies = [{ type: "openDatePicker", title: "Select Date", value: "default" }]
+            newMessage = this.botMessageToWebMessage(botMessage);
+            this.setState({ messages: [newMessage, ...this.state.messages], quickReplies });
+          }
+          else {
+            newMessage = this.botMessageToWebMessage(botMessage);
+            this.setState({ messages: [newMessage, ...this.state.messages], quickReplies });
+          }
+
         }
       }
     });
@@ -172,19 +180,39 @@ export default class App extends Component {
     if (quickReplies.type == "openUrl") {
       this.setState({ webViewUrl: quickReplies.value, showWebView: true })
     }
+    else if(quickReplies.type == "openDatePicker"){
+      this.loadDatePicker();
+    }
     else {
       this.prepareMessageAndSend({ text: quickReplies.value })
     }
   }
 
   onBarCodeRead = (e) => {
-    this.prepareMessageAndSend({text : e.data})
-    this.setState({ showCamera : false });
+    this.prepareMessageAndSend({ text: e.data })
+    this.setState({ showCamera: false });
   }
 
+  loadDatePicker = async () => {
+    try {
+      const { action, year, month, day } = await DatePickerAndroid.open({
+        date: new Date()
+      });
+      if (action !== DatePickerAndroid.dismissedAction) {
+        console.log("No date selected")
+      }
+      if (action == DatePickerAndroid.dateSetAction) {
+        this.prepareMessageAndSend({ text: new Date(year, month, day).toDateString() })
+      }
+    } catch ({ code, message }) {
+      console.warn('Cannot open date picker', message);
+    }
+  }
 
   componentDidMount() {
+
     this.prepareMessageAndSend({ text: this.props.navigation.state.params.msg })
+
   }
 
   componentWillUnmount() {
@@ -198,7 +226,7 @@ export default class App extends Component {
 
   render() {
 
-    let { messages, quickReplies, currentMessage, placeholder, showCamera, showSpinner, showWebView ,webViewUrl} = this.state;
+    let { messages, quickReplies, currentMessage, placeholder, showCamera, showSpinner, showWebView, webViewUrl } = this.state;
 
     return (
       <SafeAreaView style={styles.container}>
@@ -231,7 +259,7 @@ export default class App extends Component {
 
                 <View style={{ display: "flex", flexDirection: "row" }}>
                   <TouchableOpacity
-                  onPress = {() => this.setState ({showCamera : true})}
+                    onPress={() => this.setState({ showCamera: true })}
                     style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
                   >
                     <Icon name="ios-barcode" size={30} color="#4ea1f4"></Icon>
@@ -252,10 +280,10 @@ export default class App extends Component {
 
 
               <ScrollView style={{ flex: .8 }}
-              ref={ref => this.scrollView = ref}
-              onContentSizeChange={(contentWidth, contentHeight)=>{        
-                  this.scrollView.scrollToEnd({animated: true});
-              }}
+                ref={ref => this.scrollView = ref}
+                onContentSizeChange={(contentWidth, contentHeight) => {
+                  this.scrollView.scrollToEnd({ animated: true });
+                }}
               >
                 <Messages messages={messages} />
               </ScrollView>
@@ -275,7 +303,7 @@ export default class App extends Component {
                   <View style={{ flex: .7 }}>
                     <WebView
                       ref={(view) => this.webView = view}
-                      source={{ uri: webViewUrl}}
+                      source={{ uri: webViewUrl }}
                       flex={1}
                       scalesPageToFit={true}
                       onLoadEnd={() => { this.setState({ showSpinner: false }) }}

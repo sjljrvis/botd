@@ -13,7 +13,7 @@ export default class Carousel extends Component {
         {
           this.props.attachments.map((item, index) => {
             return (
-              <View>
+              <View key={index}>
                 {
                   item.content.images.map((image, index) => {
                     return (
