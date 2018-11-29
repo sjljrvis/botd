@@ -1,16 +1,14 @@
 
 import React, { Component } from 'react'
-import { Text, View, KeyboardAvoidingView, TextInput, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, View, KeyboardAvoidingView, TextInput, SafeAreaView, ScrollView, TouchableOpacity, Modal, Button, WebView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { DirectLine } from "botframework-directlinejs";
+import { DirectLine, ConnectionStatus } from "botframework-directlinejs";
 import Voice from 'react-native-voice';
 import Messages from './Message'
 import styles from './style'
 import Camera from 'react-native-camera';
 
-const directLine = new DirectLine({
-  secret: "hvdUZWb1yeE.cwA.L4Q.Io8v79ztRewrHEFFXyivUaMPGs3GTUbfgfzd1pdd3bE"
-});
+let directLine = null;
 
 export default class App extends Component {
 
@@ -23,8 +21,17 @@ export default class App extends Component {
       recognized: '',
       started: '',
       results: [],
-      placeholder: "Type your message"
+      placeholder: "Type your message",
+      showCamera: false,
+      showWebView: false,
+      showSpinner: true,
+      webViewUrl: ""
     }
+
+    directLine = new DirectLine({
+      secret: "hvdUZWb1yeE.cwA.L4Q.Io8v79ztRewrHEFFXyivUaMPGs3GTUbfgfzd1pdd3bE"
+    });
+
 
     Voice.onSpeechStart = this.onSpeechStart.bind(this)
     Voice.onSpeechRecognized = this.onSpeechRecognized.bind(this)
@@ -45,12 +52,11 @@ export default class App extends Component {
                 type: button.type
               }
             })
+            // if(botMessage.text){
+            //   botMessage.attachments = null;
+            // }
             newMessage = this.botMessageToWebMessage(botMessage);
-            this.setState({ messages: [newMessage, ...this.state.messages], quickReplies });
-          }
-          else if (botMessage.attachments[0].payload) {
-            newMessage = this.botMessageToWebMessage(botMessage);
-            this.setState({ messages: [newMessage, ...this.state.messages], quickReplies });
+            this.setState({  quickReplies });
           }
         }
         if (botMessage.suggestedActions) {
@@ -69,6 +75,12 @@ export default class App extends Component {
         }
       }
     });
+
+
+    directLine.connectionStatus$
+      .subscribe(connectionStatus => {
+        console.log(ConnectionStatus[connectionStatus])
+      });
 
   }
 
@@ -95,7 +107,6 @@ export default class App extends Component {
   }
 
   prepareMessageAndSend = (message) => {
-    this.textInput.clear();
     this.setState({ quickReplies: [], showMenuOption: false })
     let msg = {
       isBot: false,
@@ -130,9 +141,9 @@ export default class App extends Component {
     });
   }
 
-  onSpeechEnd(e){
+  onSpeechEnd(e) {
     this.setState({
-      placeholder : "Type your message"
+      placeholder: "Type your message"
     })
   }
 
@@ -157,113 +168,201 @@ export default class App extends Component {
     }
   }
 
+  handleQuickReplies = (quickReplies) => {
+    if (quickReplies.type == "openUrl") {
+      this.setState({ webViewUrl: quickReplies.value, showWebView: true })
+    }
+    else {
+      this.prepareMessageAndSend({ text: quickReplies.value })
+    }
+  }
 
-  onBarCodeRead = (e) => this.setState({qrcode: e.data});
+  onBarCodeRead = (e) => {
+    this.prepareMessageAndSend({text : e.data})
+    this.setState({ showCamera : false });
+  }
 
 
   componentDidMount() {
+    this.prepareMessageAndSend({ text: this.props.navigation.state.params.msg })
+  }
+
+  componentWillUnmount() {
+    try {
+      directLine.end();
+    } catch (e) {
+      console.log(e.message)
+    }
   }
 
 
   render() {
 
-    let { messages, quickReplies, currentMessage, placeholder } = this.state;
+    let { messages, quickReplies, currentMessage, placeholder, showCamera, showSpinner, showWebView ,webViewUrl} = this.state;
 
     return (
       <SafeAreaView style={styles.container}>
 
-       <Camera
-                    style={styles.preview}
-                    onBarCodeRead={this.onBarCodeRead}
-                    ref={cam => this.camera = cam}
-                    aspect={Camera.constants.Aspect.fill}
-                    >
-                        <Text style={{
-                            backgroundColor: 'white'
-                        }}>{this.state.qrcode}</Text>
-                    </Camera>
+        {
+          showCamera ?
+            <Camera
+              style={styles.preview}
+              onBarCodeRead={this.onBarCodeRead}
+              ref={cam => this.camera = cam}
+              aspect={Camera.constants.Aspect.fill}
+            >
+              <Text style={{
+                backgroundColor: 'white'
+              }}>{this.state.qrcode}</Text>
+            </Camera>
+            :
 
-        {/* <KeyboardAvoidingView style={styles.keyboardAvoidContainer}>
-
-
-            <View style={{ height: 50, backgroundColor: "#FFFFFF", backgroundColor: "#FFFFFF", justifyContent: "space-between", flexDirection: "row", alignContent: "center", alignItems: "center", paddingLeft: 10, paddingRight: 10 }}>
-              <TouchableOpacity
-                style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
-              >
-                <Icon name="ios-arrow-round-back" size={40} color="#4ea1f4"></Icon>
-              </TouchableOpacity>
+            <KeyboardAvoidingView style={styles.keyboardAvoidContainer}>
 
 
-              <View style={{ display: "flex", flexDirection: "row" }}>
+              <View style={{ height: 50, backgroundColor: "#FFFFFF", backgroundColor: "#FFFFFF", justifyContent: "space-between", flexDirection: "row", alignContent: "center", alignItems: "center", paddingLeft: 10, paddingRight: 10 }}>
                 <TouchableOpacity
+                  onPress={() => this.props.navigation.navigate("Splash")}
                   style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
                 >
-                  <Icon name="ios-barcode" size={30} color="#4ea1f4"></Icon>
+                  <Icon name="ios-arrow-round-back" size={40} color="#4ea1f4"></Icon>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
-                >
-                  <Icon name="ios-refresh" size={20} color="#4ea1f4"></Icon>
-                </TouchableOpacity>
+
+
+                <View style={{ display: "flex", flexDirection: "row" }}>
+                  <TouchableOpacity
+                  onPress = {() => this.setState ({showCamera : true})}
+                    style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
+                  >
+                    <Icon name="ios-barcode" size={30} color="#4ea1f4"></Icon>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
+                  >
+                    <Icon name="ios-refresh" size={20} color="#4ea1f4"></Icon>
+                  </TouchableOpacity>
+                </View>
+
               </View>
 
-            </View>
 
 
 
 
 
 
-
-            <ScrollView style={{ flex: .8 }} >
-              <Messages messages={messages} />
-            </ScrollView>
-
-
-
-
-            <View style={{ height: 60, justifyContent: "center", flexDirection: "row", alignContent: "center", alignItems: "center", paddingLeft: 10, paddingRight: 10 }}>
-              <ScrollView horizontal={true}>
-                <TouchableOpacity style={{
-                  marginLeft: 10, marginRight: 10,
-                  borderStyle: "solid", borderWidth: 1, borderColor: "#4ea1f4", padding: 5, backgroundColor: "#FFFFFF", justifyContent: "center", flexDirection: "row", alignContent: "center", alignItems: "center", borderRadius: 4
-                }}>
-                  <Text style={{ color: "#4ea1f4", margin: 5 }}>English</Text>
-                </TouchableOpacity>
+              <ScrollView style={{ flex: .8 }}
+              ref={ref => this.scrollView = ref}
+              onContentSizeChange={(contentWidth, contentHeight)=>{        
+                  this.scrollView.scrollToEnd({animated: true});
+              }}
+              >
+                <Messages messages={messages} />
               </ScrollView>
-            </View>
-
-            <View style={{ height: 75, backgroundColor: "#FFFFFF", justifyContent: "center", flexDirection: "row", alignContent: "center", alignItems: "center", paddingLeft: 10, paddingRight: 10 }}>
 
 
-
-              <TouchableOpacity
-                onPress={this._startRecognition.bind(this)}
-                style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#4ea1f4", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
+              <Modal
+                animationType="slide"
+                transparent={true}
+                visible={showWebView}
+                onRequestClose={() => console.log("closing modal")}
               >
-                <Icon name="ios-mic" size={20} color="#FFFFFF"></Icon>
-              </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+
+                  <View style={{ flex: .3 }}>
+                  </View>
+
+                  <View style={{ flex: .7 }}>
+                    <WebView
+                      ref={(view) => this.webView = view}
+                      source={{ uri: webViewUrl}}
+                      flex={1}
+                      scalesPageToFit={true}
+                      onLoadEnd={() => { this.setState({ showSpinner: false }) }}
+                      onMessage={(e) => { this.exitWebView(e) }}
+                      javaScriptEnabled={true}
+                      allowUniversalAccessFromFileURLs={true}
+                      mixedContentMode={"always"}
+                      style={{ backgroundColor: "#F8F8F8" }}
+                    />
+                    {showSpinner ?
+                      <ActivityIndicator size="large" color="#4ea1f4" /> : null
+                    }
+                  </View>
+
+                  <Button style={{ height: 60 }} title="close"
+                    onPress={() => {
+                      this.setState({ showWebView: false })
+                    }}
+                  ></Button>
+
+                </View>
+              </Modal>
 
 
-              <TextInput
-                ref={input => { this.textInput = input }}
-                style={{ width: "80%" }}
-                placeholder={placeholder}
-                onChangeText={(e) => this.setState({ currentMessage: e })}
-              />
 
 
-              <TouchableOpacity
-                style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#ffffff", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
-                onPress={() => this.prepareMessageAndSend({ text: currentMessage })}
-              >
-                <Icon name="ios-send" size={30} color="#4ea1f4"></Icon>
-              </TouchableOpacity>
 
 
-            </View>
 
-        </KeyboardAvoidingView> */}
+
+
+
+              <View style={{ height: 60, justifyContent: "center", flexDirection: "row", alignContent: "center", alignItems: "center", paddingLeft: 10, paddingRight: 10 }}>
+                <ScrollView horizontal={true}>
+                  {
+                    quickReplies.map((item, index) => {
+                      return (
+                        <TouchableOpacity key={index}
+                          onPress={() => this.handleQuickReplies(item)}
+                          style={{
+                            marginLeft: 10, marginRight: 10,
+                            borderStyle: "solid", borderWidth: 1, borderColor: "#4ea1f4", padding: 5, backgroundColor: "#FFFFFF", justifyContent: "center", flexDirection: "row", alignContent: "center", alignItems: "center", borderRadius: 4
+                          }}>
+                          <Text style={{ color: "#4ea1f4", margin: 5 }}>{item.title == 'Payment' ? "Open link" : item.title}</Text>
+                        </TouchableOpacity>
+                      )
+                    })
+                  }
+                </ScrollView>
+              </View>
+
+              <View style={{ height: 75, backgroundColor: "#FFFFFF", justifyContent: "center", flexDirection: "row", alignContent: "center", alignItems: "center", paddingLeft: 10, paddingRight: 10 }}>
+
+
+
+                <TouchableOpacity
+                  onPress={this._startRecognition.bind(this)}
+                  style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#4ea1f4", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
+                >
+                  <Icon name="ios-mic" size={20} color="#FFFFFF"></Icon>
+                </TouchableOpacity>
+
+
+                <TextInput
+                  ref={input => { this.textInput = input }}
+                  style={{ width: "80%" }}
+                  placeholder={placeholder}
+                  onChangeText={(e) => this.setState({ currentMessage: e })}
+                />
+
+
+                <TouchableOpacity
+                  style={{ justifyContent: "center", width: 40, height: 40, borderRadius: 20, backgroundColor: "#ffffff", display: "flex", flexDirection: "row", alignContent: "center", alignItems: "center" }}
+                  onPress={() => {
+                    this.prepareMessageAndSend({ text: currentMessage })
+                    this.textInput.clear();
+                  }
+                  }
+                >
+                  <Icon name="ios-send" size={30} color="#4ea1f4"></Icon>
+                </TouchableOpacity>
+
+
+              </View>
+
+            </KeyboardAvoidingView>
+        }
       </SafeAreaView>
     );
   }
