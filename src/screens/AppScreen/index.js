@@ -29,7 +29,7 @@ export default class App extends Component {
     }
 
     directLine = new DirectLine({
-      secret: "hvdUZWb1yeE.cwA.L4Q.Io8v79ztRewrHEFFXyivUaMPGs3GTUbfgfzd1pdd3bE"
+      secret: "zaMhyNmfuN8.cwA.FAA.LBJeOwe6Ne9O2hSiHJ9qZmZjiLTD7YorL9RVem4kq1g"
     });
 
 
