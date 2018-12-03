@@ -1,6 +1,6 @@
 
 import React, { Component } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity,Image } from 'react-native';
 
 
 export default class App extends Component {
@@ -12,8 +12,8 @@ export default class App extends Component {
   render() {
     return (
       <View style={styles.container}>
-        <Text>Bot Demo</Text>
-
+        
+<Image source={require('../../assets/idai-logo.jpeg')} style={{}}></Image>
         <TouchableOpacity onPress={() => this.props.navigation.navigate("AppStack", { msg: "flow 1" })}
         style={{margin :20 , padding : 20 , backgroundColor : "#4ea1f4" , borderRadius : 4 , color : " #FFFFFF"}}
         >
@@ -37,5 +37,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    padding : 10
   }
 });

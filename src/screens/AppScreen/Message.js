@@ -59,14 +59,12 @@ export default class Messages extends Component {
       <View style={{ display: "flex", flexDirection: "column-reverse" }}>
         {
           messages.map((message, index) => {
-            if (message.text !== "flow 1" || message.text !== "flow 2") {
               if (message.attachments) {
                 return this.renderCustomTemplates(message, index)
               }
               else {
                 return this.renderTextMessages(message, index)
               }
-            }
           })
         }
       </View>

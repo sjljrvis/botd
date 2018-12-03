@@ -39,7 +39,7 @@ export default class App extends Component {
 
 
     directLine.activity$.subscribe(botMessage => {
-      console.log(botMessage)
+      // console.log(botMessage)
       let quickReplies = [];
       let newMessage;
       if (!botMessage.from.client) {
@@ -67,7 +67,17 @@ export default class App extends Component {
               type: item.type
             }
           })
-          this.setState({ quickReplies })
+
+          if(quickReplies.filter(x => x.type == "openUrl").length > 0){
+            quickReplies.push({
+              title : "Proceed",
+              value : "Proceed",
+              type : "imBack"
+            })
+          }
+
+          newMessage = this.botMessageToWebMessage(botMessage);
+          this.setState({ messages: [newMessage, ...this.state.messages], quickReplies })
         }
         else {
           if (botMessage.text == "Ok! thanks. you usually get it by mail, which can take up to 6 days. when are you going for vacation?") {
